@@ -1,0 +1,105 @@
+name: DownloadSQLServer
+description: This downloads and expands SQL Server ISO.
+schemaVersion: 1.0
+
+phases:
+  - name: build
+    steps:
+      - name: SQLServerS3Download
+        action: S3Download
+        timeoutSeconds: 60
+        onFailure: Abort
+        maxAttempts: 3
+        inputs:
+          -
+            source: 's3://<bucket_name>/SQLServer2019-x64-ENU.iso'
+            destination: 'C:/SQLServer2019-x64-ENU.iso'
+
+      - name: ExpandISO
+        action: ExecutePowerShell
+        inputs:
+          commands:
+            - |
+              $DiskImage = Mount-DiskImage -ImagePath C:/SQLServer2019-x64-ENU.iso -StorageType ISO -NoDriveLetter -PassThru
+              New-PSDrive -Name ISOFile -PSProvider FileSystem -Root (Get-Volume -DiskImage $DiskImage).UniqueId
+              Push-Location ISOFile:
+              Copy-Item ISOFile: -Destination C:/SQL_Install_media -Recurse
+              Pop-Location
+              Remove-PSDrive ISOFile
+              Dismount-DiskImage -DevicePath $DiskImage.DevicePath
+
+      - name: InstallFailoverFeatures
+        action: ExecutePowerShell
+        inputs:
+          commands:
+            - |
+              $rebootIndicator = Join-Path -Path $env:SystemDrive -ChildPath 'reboot-indicator'
+              if (Test-Path -Path $rebootIndicator) {
+                Write-Host 'The reboot file exists. Deleting it and exiting with success.'
+                Remove-Item -Path $rebootIndicator -Force | Out-Null
+                [System.Environment]::Exit(0)
+              }
+              Write-Host 'The reboot file does not exist. Creating it and triggering a restart.'
+              New-Item -Path $rebootIndicator -ItemType File | Out-Null
+              Install-WindowsFeature Failover-Clustering
+              Install-WindowsFeature RSAT-AD-PowerShell
+              Install-WindowsFeature RSAT-AD-Tools
+              Install-WindowsFeature RSAT-Clustering-Mgmt
+              Install-WindowsFeature RSAT-Clustering-PowerShell
+              Install-WindowsFeature RSAT-Clustering-CmdInterface
+              [System.Environment]::Exit(3010)
+
+      - name: InstallModules
+        action: ExecutePowerShell
+        inputs:
+          commands:
+            - |
+              "Setting up Powershell Gallery to Install DSC Modules"
+              [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+              Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
+              Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+              "Installing Modules"
+              Install-Module -Name ComputerManagementDsc
+              Install-Module -Name FailOverClusterDsc
+              Install-Module -Name PSDscResources
+              Install-Module -Name xSmbShare
+              Install-Module -Name xActiveDirectory
+              Install-Module -Name SqlServer
+
+      - name: DisableFirewall
+        action: ExecutePowerShell
+        inputs:
+          commands:
+            - |
+              Get-NetFirewallProfile | Set-NetFirewallProfile -Enabled False
+
+      - name: EnableCredSSP
+        action: ExecutePowerShell
+        inputs:
+          commands:
+            - |
+              Enable-WSManCredSSP -Role "Server" -Force
+              Enable-WSManCredSSP -Role "Client" -DelegateComputer *.<domain>.com -Force
+
+      - name: AllowNTLMAuthCreds
+        action: SetRegistry
+        inputs:
+            - path: HKLM:\Software\Policies\Microsoft\Windows\CredentialsDelegation
+              name: AllowFreshCredentialsWhenNTLMOnly
+              value: 1
+              type: DWORD
+
+      - name: AllowDomainUseNTLMFromPS
+        action: SetRegistry
+        inputs:
+            - path: HKLM:\Software\Policies\Microsoft\Windows\CredentialsDelegation\AllowFreshCredentialsWhenNTLMOnly
+              name: 1
+              value: wsman/*.<domain>.com
+              type: SZ
+
+      - name: Cleanup
+        action: DeleteFile
+        onFailure: Abort
+        maxAttempts: 3
+        inputs:
+          - path: '{{build.SQLServerS3Download.inputs[0].destination}}'
