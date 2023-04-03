@@ -6,7 +6,7 @@ The included terraform module provisions up to two EC2 SQLServer instances with 
 
 The code in this repository helps you set up the following target architecture
 
-[Target architecture diagram](images/architecture.png)
+![Target architecture diagram](images/architecture.png)
 
 For prerequisites and instructions for using this AWS Prescriptive Guidance pattern, see [Pattern title](link to pattern on the external APG site).
 
