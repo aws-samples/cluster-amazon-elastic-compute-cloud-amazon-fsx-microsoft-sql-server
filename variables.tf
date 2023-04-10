@@ -229,7 +229,7 @@ variable "tag_product" {
 }
 
 variable "tag_environment" {
-  description = "Envrionment in which resources are deployed (e.g., nonprod)"
+  description = "Environment in which resources are deployed (e.g., nonprod)"
   type        = string
 }
 
