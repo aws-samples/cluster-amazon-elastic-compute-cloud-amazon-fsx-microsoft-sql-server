@@ -21,8 +21,6 @@ $ClusterCredentials = (New-Object PSCredential($ClusterAdminUser,$SecureAdminPas
 $DomainUser = (Get-SECSecretValue -SecretId ${sqlservice_user.username_secret}).SecretString
 $DomainPassword = (Get-SECSecretValue -SecretId ${sqlservice_user.password_secret}).SecretString
 $FQDomainUser = "${domain_net_bios_name}\$${DomainUser}"
-"Add DNS Suffix"
-Set-DnsClientGlobalSetting -SuffixSearchList @("${domain_dns_name}")
 
 "Config LCM and Cred Encrypt Cert"
 $CertificatePath = "C:\FCIResources\publickeys\AWSQSDscPublicKey.cer"
@@ -49,8 +47,7 @@ if (-not(Test-Path -Path $CertificatePath)) {
 }
 
 "Join AD"
-Add-Computer -DomainName ${domain_dns_name} -Credential $ClusterCredentials
-
+Add-Computer -DomainName ${domain_dns_name} -Credential $ClusterCredentials -Force -Restart
 
 "Configure Domain Groups"
 Add-LocalGroupMember -Group "Administrators" -Member ${domain_group_administrators}
