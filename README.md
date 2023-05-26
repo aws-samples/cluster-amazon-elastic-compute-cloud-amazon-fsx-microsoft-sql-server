@@ -8,7 +8,7 @@ The code in this repository helps you set up the following target architecture
 
 ![Target architecture diagram](images/architecture.png)
 
-For prerequisites and instructions for using this AWS Prescriptive Guidance pattern, see [Pattern title](link to pattern on the external APG site).
+For prerequisites and instructions for using this AWS Prescriptive Guidance pattern, see [Deploy Microsoft SQL Server Failover Cluster Instances on EC2 and FSx using Terraform](https://apg-library.amazonaws.com/content-history-viewer/45f3ab19-d240-4353-ab6e-f6e565f537a4/1).
 
 ## Security
 
