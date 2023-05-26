@@ -28,7 +28,7 @@ variable "throughput_capacity" {
 variable "deployment_type" {
   type        = string
   description = "deployment_type for fsx"
-  default     = "SINGLE_AZ_1"
+  default     = "MULTI_AZ_1"
 }
 
 variable "active_directory_id" {
